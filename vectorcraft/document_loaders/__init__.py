@@ -1,0 +1,210 @@
+"""**Document Loaders**  are classes to load Documents.
+
+**Document Loaders** are usually used to load a lot of Documents in a single run.
+
+**Class hierarchy:**
+
+.. code-block::
+
+    BaseLoader --> <name>Loader  # Examples: TextLoader, UnstructuredFileLoader
+
+**Main helpers:**
+
+.. code-block::
+
+    Document, <name>TextSplitter
+"""
+import importlib
+from typing import Any
+
+_module_lookup = {
+    "AZLyricsLoader": "vectorcraft.document_loaders.azlyrics",
+    "AcreomLoader": "vectorcraft.document_loaders.acreom",
+    "AirbyteCDKLoader": "vectorcraft.document_loaders.airbyte",
+    "AirbyteGongLoader": "vectorcraft.document_loaders.airbyte",
+    "AirbyteHubspotLoader": "vectorcraft.document_loaders.airbyte",
+    "AirbyteJSONLoader": "vectorcraft.document_loaders.airbyte_json",
+    "AirbyteSalesforceLoader": "vectorcraft.document_loaders.airbyte",
+    "AirbyteShopifyLoader": "vectorcraft.document_loaders.airbyte",
+    "AirbyteStripeLoader": "vectorcraft.document_loaders.airbyte",
+    "AirbyteTypeformLoader": "vectorcraft.document_loaders.airbyte",
+    "AirbyteZendeskSupportLoader": "vectorcraft.document_loaders.airbyte",
+    "AirtableLoader": "vectorcraft.document_loaders.airtable",
+    "AmazonTextractPDFLoader": "vectorcraft.document_loaders.pdf",
+    "ApifyDatasetLoader": "vectorcraft.document_loaders.apify_dataset",
+    "ArcGISLoader": "vectorcraft.document_loaders.arcgis_loader",
+    "ArxivLoader": "vectorcraft.document_loaders.arxiv",
+    "AssemblyAIAudioLoaderById": "vectorcraft.document_loaders.assemblyai",
+    "AssemblyAIAudioTranscriptLoader": "vectorcraft.document_loaders.assemblyai",  # noqa: E501
+    "AstraDBLoader": "vectorcraft.document_loaders.astradb",
+    "AsyncChromiumLoader": "vectorcraft.document_loaders.chromium",
+    "AsyncHtmlLoader": "vectorcraft.document_loaders.async_html",
+    "AthenaLoader": "vectorcraft.document_loaders.athena",
+    "AzureAIDataLoader": "vectorcraft.document_loaders.azure_ai_data",
+    "AzureAIDocumentIntelligenceLoader": "vectorcraft.document_loaders.doc_intelligence",  # noqa: E501
+    "AzureBlobStorageContainerLoader": "vectorcraft.document_loaders.azure_blob_storage_container",  # noqa: E501
+    "AzureBlobStorageFileLoader": "vectorcraft.document_loaders.azure_blob_storage_file",  # noqa: E501
+    "BSHTMLLoader": "vectorcraft.document_loaders.html_bs",
+    "BibtexLoader": "vectorcraft.document_loaders.bibtex",
+    "BigQueryLoader": "vectorcraft.document_loaders.bigquery",
+    "BiliBiliLoader": "vectorcraft.document_loaders.bilibili",
+    "BlackboardLoader": "vectorcraft.document_loaders.blackboard",
+    "Blob": "vectorcraft.document_loaders.blob_loaders",
+    "BlobLoader": "vectorcraft.document_loaders.blob_loaders",
+    "BlockchainDocumentLoader": "vectorcraft.document_loaders.blockchain",
+    "BraveSearchLoader": "vectorcraft.document_loaders.brave_search",
+    "BrowserlessLoader": "vectorcraft.document_loaders.browserless",
+    "CSVLoader": "vectorcraft.document_loaders.csv_loader",
+    "CassandraLoader": "vectorcraft.document_loaders.cassandra",
+    "ChatGPTLoader": "vectorcraft.document_loaders.chatgpt",
+    "CoNLLULoader": "vectorcraft.document_loaders.conllu",
+    "CollegeConfidentialLoader": "vectorcraft.document_loaders.college_confidential",  # noqa: E501
+    "ConcurrentLoader": "vectorcraft.document_loaders.concurrent",
+    "ConfluenceLoader": "vectorcraft.document_loaders.confluence",
+    "CouchbaseLoader": "vectorcraft.document_loaders.couchbase",
+    "CubeSemanticLoader": "vectorcraft.document_loaders.cube_semantic",
+    "DataFrameLoader": "vectorcraft.document_loaders.dataframe",
+    "DatadogLogsLoader": "vectorcraft.document_loaders.datadog_logs",
+    "DiffbotLoader": "vectorcraft.document_loaders.diffbot",
+    "DirectoryLoader": "vectorcraft.document_loaders.directory",
+    "DiscordChatLoader": "vectorcraft.document_loaders.discord",
+    "DocugamiLoader": "vectorcraft.document_loaders.docugami",
+    "DocusaurusLoader": "vectorcraft.document_loaders.docusaurus",
+    "Docx2txtLoader": "vectorcraft.document_loaders.word_document",
+    "DropboxLoader": "vectorcraft.document_loaders.dropbox",
+    "DuckDBLoader": "vectorcraft.document_loaders.duckdb_loader",
+    "EtherscanLoader": "vectorcraft.document_loaders.etherscan",
+    "EverNoteLoader": "vectorcraft.document_loaders.evernote",
+    "FacebookChatLoader": "vectorcraft.document_loaders.facebook_chat",
+    "FaunaLoader": "vectorcraft.document_loaders.fauna",
+    "FigmaFileLoader": "vectorcraft.document_loaders.figma",
+    "FileSystemBlobLoader": "vectorcraft.document_loaders.blob_loaders",
+    "GCSDirectoryLoader": "vectorcraft.document_loaders.gcs_directory",
+    "GCSFileLoader": "vectorcraft.document_loaders.gcs_file",
+    "GeoDataFrameLoader": "vectorcraft.document_loaders.geodataframe",
+    "GitHubIssuesLoader": "vectorcraft.document_loaders.github",
+    "GitLoader": "vectorcraft.document_loaders.git",
+    "GitbookLoader": "vectorcraft.document_loaders.gitbook",
+    "GithubFileLoader": "vectorcraft.document_loaders.github",
+    "GoogleApiClient": "vectorcraft.document_loaders.youtube",
+    "GoogleApiYoutubeLoader": "vectorcraft.document_loaders.youtube",
+    "GoogleDriveLoader": "vectorcraft.document_loaders.googledrive",
+    "GoogleSpeechToTextLoader": "vectorcraft.document_loaders.google_speech_to_text",  # noqa: E501
+    "GutenbergLoader": "vectorcraft.document_loaders.gutenberg",
+    "HNLoader": "vectorcraft.document_loaders.hn",
+    "HuggingFaceDatasetLoader": "vectorcraft.document_loaders.hugging_face_dataset",  # noqa: E501
+    "HuggingFaceModelLoader": "vectorcraft.document_loaders.hugging_face_model",
+    "IFixitLoader": "vectorcraft.document_loaders.ifixit",
+    "IMSDbLoader": "vectorcraft.document_loaders.imsdb",
+    "ImageCaptionLoader": "vectorcraft.document_loaders.image_captions",
+    "IuguLoader": "vectorcraft.document_loaders.iugu",
+    "JSONLoader": "vectorcraft.document_loaders.json_loader",
+    "JoplinLoader": "vectorcraft.document_loaders.joplin",
+    "LakeFSLoader": "vectorcraft.document_loaders.lakefs",
+    "LarkSuiteDocLoader": "vectorcraft.document_loaders.larksuite",
+    "MHTMLLoader": "vectorcraft.document_loaders.mhtml",
+    "MWDumpLoader": "vectorcraft.document_loaders.mediawikidump",
+    "MastodonTootsLoader": "vectorcraft.document_loaders.mastodon",
+    "MathpixPDFLoader": "vectorcraft.document_loaders.pdf",
+    "MaxComputeLoader": "vectorcraft.document_loaders.max_compute",
+    "MergedDataLoader": "vectorcraft.document_loaders.merge",
+    "ModernTreasuryLoader": "vectorcraft.document_loaders.modern_treasury",
+    "MongodbLoader": "vectorcraft.document_loaders.mongodb",
+    "NewsURLLoader": "vectorcraft.document_loaders.news",
+    "NotebookLoader": "vectorcraft.document_loaders.notebook",
+    "NotionDBLoader": "vectorcraft.document_loaders.notiondb",
+    "NotionDirectoryLoader": "vectorcraft.document_loaders.notion",
+    "OBSDirectoryLoader": "vectorcraft.document_loaders.obs_directory",
+    "OBSFileLoader": "vectorcraft.document_loaders.obs_file",
+    "ObsidianLoader": "vectorcraft.document_loaders.obsidian",
+    "OneDriveFileLoader": "vectorcraft.document_loaders.onedrive_file",
+    "OneDriveLoader": "vectorcraft.document_loaders.onedrive",
+    "OnlinePDFLoader": "vectorcraft.document_loaders.pdf",
+    "OpenCityDataLoader": "vectorcraft.document_loaders.open_city_data",
+    "OutlookMessageLoader": "vectorcraft.document_loaders.email",
+    "PDFMinerLoader": "vectorcraft.document_loaders.pdf",
+    "PDFMinerPDFasHTMLLoader": "vectorcraft.document_loaders.pdf",
+    "PDFPlumberLoader": "vectorcraft.document_loaders.pdf",
+    "PagedPDFSplitter": "vectorcraft.document_loaders.pdf",
+    "PebbloSafeLoader": "vectorcraft.document_loaders.pebblo",
+    "PlaywrightURLLoader": "vectorcraft.document_loaders.url_playwright",
+    "PolarsDataFrameLoader": "vectorcraft.document_loaders.polars_dataframe",
+    "PsychicLoader": "vectorcraft.document_loaders.psychic",
+    "PubMedLoader": "vectorcraft.document_loaders.pubmed",
+    "PyMuPDFLoader": "vectorcraft.document_loaders.pdf",
+    "PyPDFDirectoryLoader": "vectorcraft.document_loaders.pdf",
+    "PyPDFLoader": "vectorcraft.document_loaders.pdf",
+    "PyPDFium2Loader": "vectorcraft.document_loaders.pdf",
+    "PySparkDataFrameLoader": "vectorcraft.document_loaders.pyspark_dataframe",
+    "PythonLoader": "vectorcraft.document_loaders.python",
+    "RSSFeedLoader": "vectorcraft.document_loaders.rss",
+    "ReadTheDocsLoader": "vectorcraft.document_loaders.readthedocs",
+    "RecursiveUrlLoader": "vectorcraft.document_loaders.recursive_url_loader",
+    "RedditPostsLoader": "vectorcraft.document_loaders.reddit",
+    "RoamLoader": "vectorcraft.document_loaders.roam",
+    "RocksetLoader": "vectorcraft.document_loaders.rocksetdb",
+    "S3DirectoryLoader": "vectorcraft.document_loaders.s3_directory",
+    "S3FileLoader": "vectorcraft.document_loaders.s3_file",
+    "SQLDatabaseLoader": "vectorcraft.document_loaders.sql_database",
+    "SRTLoader": "vectorcraft.document_loaders.srt",
+    "SeleniumURLLoader": "vectorcraft.document_loaders.url_selenium",
+    "SharePointLoader": "vectorcraft.document_loaders.sharepoint",
+    "SitemapLoader": "vectorcraft.document_loaders.sitemap",
+    "SlackDirectoryLoader": "vectorcraft.document_loaders.slack_directory",
+    "SnowflakeLoader": "vectorcraft.document_loaders.snowflake_loader",
+    "SpreedlyLoader": "vectorcraft.document_loaders.spreedly",
+    "StripeLoader": "vectorcraft.document_loaders.stripe",
+    "SurrealDBLoader": "vectorcraft.document_loaders.surrealdb",
+    "TelegramChatApiLoader": "vectorcraft.document_loaders.telegram",
+    "TelegramChatFileLoader": "vectorcraft.document_loaders.telegram",
+    "TelegramChatLoader": "vectorcraft.document_loaders.telegram",
+    "TencentCOSDirectoryLoader": "vectorcraft.document_loaders.tencent_cos_directory",  # noqa: E501
+    "TencentCOSFileLoader": "vectorcraft.document_loaders.tencent_cos_file",
+    "TensorflowDatasetLoader": "vectorcraft.document_loaders.tensorflow_datasets",  # noqa: E501
+    "TextLoader": "vectorcraft.document_loaders.text",
+    "TiDBLoader": "vectorcraft.document_loaders.tidb",
+    "ToMarkdownLoader": "vectorcraft.document_loaders.tomarkdown",
+    "TomlLoader": "vectorcraft.document_loaders.toml",
+    "TrelloLoader": "vectorcraft.document_loaders.trello",
+    "TwitterTweetLoader": "vectorcraft.document_loaders.twitter",
+    "UnstructuredAPIFileIOLoader": "vectorcraft.document_loaders.unstructured",
+    "UnstructuredAPIFileLoader": "vectorcraft.document_loaders.unstructured",
+    "UnstructuredCSVLoader": "vectorcraft.document_loaders.csv_loader",
+    "UnstructuredEPubLoader": "vectorcraft.document_loaders.epub",
+    "UnstructuredEmailLoader": "vectorcraft.document_loaders.email",
+    "UnstructuredExcelLoader": "vectorcraft.document_loaders.excel",
+    "UnstructuredFileIOLoader": "vectorcraft.document_loaders.unstructured",
+    "UnstructuredFileLoader": "vectorcraft.document_loaders.unstructured",
+    "UnstructuredHTMLLoader": "vectorcraft.document_loaders.html",
+    "UnstructuredImageLoader": "vectorcraft.document_loaders.image",
+    "UnstructuredMarkdownLoader": "vectorcraft.document_loaders.markdown",
+    "UnstructuredODTLoader": "vectorcraft.document_loaders.odt",
+    "UnstructuredOrgModeLoader": "vectorcraft.document_loaders.org_mode",
+    "UnstructuredPDFLoader": "vectorcraft.document_loaders.pdf",
+    "UnstructuredPowerPointLoader": "vectorcraft.document_loaders.powerpoint",
+    "UnstructuredRSTLoader": "vectorcraft.document_loaders.rst",
+    "UnstructuredRTFLoader": "vectorcraft.document_loaders.rtf",
+    "UnstructuredTSVLoader": "vectorcraft.document_loaders.tsv",
+    "UnstructuredURLLoader": "vectorcraft.document_loaders.url",
+    "UnstructuredWordDocumentLoader": "vectorcraft.document_loaders.word_document",  # noqa: E501
+    "UnstructuredXMLLoader": "vectorcraft.document_loaders.xml",
+    "VsdxLoader": "vectorcraft.document_loaders.vsdx",
+    "WeatherDataLoader": "vectorcraft.document_loaders.weather",
+    "WebBaseLoader": "vectorcraft.document_loaders.web_base",
+    "WhatsAppChatLoader": "vectorcraft.document_loaders.whatsapp_chat",
+    "WikipediaLoader": "vectorcraft.document_loaders.wikipedia",
+    "XorbitsLoader": "vectorcraft.document_loaders.xorbits",
+    "YoutubeAudioLoader": "vectorcraft.document_loaders.blob_loaders",
+    "YoutubeLoader": "vectorcraft.document_loaders.youtube",
+    "YuqueLoader": "vectorcraft.document_loaders.yuque",
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _module_lookup:
+        module = importlib.import_module(_module_lookup[name])
+        return getattr(module, name)
+    raise AttributeError(f"module {__name__} has no attribute {name}")
+
+
+__all__ = list(_module_lookup.keys())
