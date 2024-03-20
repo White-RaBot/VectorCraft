@@ -558,6 +558,7 @@ class PGVector(VectorStore):
         query: str,
         k: int = 4,
         filter: Optional[dict] = None,
+        negative_embeddings: Optional[List[List[float]]] = None,
     ) -> List[Tuple[Document, float]]:
         """Return docs most similar to query.
 
@@ -571,7 +572,7 @@ class PGVector(VectorStore):
         """
         embedding = self.embedding_function.embed_query(query)
         docs = self.similarity_search_with_score_by_vector(
-            embedding=embedding, k=k, filter=filter
+            embedding=embedding, k=k, filter=filter, negative_embeddings=negative_embeddings
         )
         return docs
 
@@ -594,9 +595,15 @@ class PGVector(VectorStore):
         embedding: List[float],
         k: int = 4,
         filter: Optional[dict] = None,
+        negative_embeddings: Optional[List[str]] = None,  # Add this line
     ) -> List[Tuple[Document, float]]:
+        # Convert negative strings to embeddings
+        if negative_embeddings:
+            negative_embeddings = [self.embedding_function.embed_query(
+                text) for text in negative_embeddings]
+
         results = self.__query_collection(
-            embedding=embedding, k=k, filter=filter)
+            embedding=embedding, k=k, filter=filter, negative_embeddings=negative_embeddings)  # Pass negative_embeddings
 
         return self._results_to_docs_and_scores(results)
 
@@ -903,8 +910,8 @@ class PGVector(VectorStore):
         embedding: List[float],
         k: int = 4,
         filter: Optional[Dict[str, str]] = None,
+        negative_embeddings: Optional[List[List[float]]] = None,
     ) -> List[Any]:
-        """Query the collection."""
         with Session(self._bind) as session:  # type: ignore[arg-type]
             collection = self.get_collection(session)
             if not collection:
@@ -917,12 +924,17 @@ class PGVector(VectorStore):
                     if filter_clauses is not None:
                         filter_by.append(filter_clauses)
                 else:
-                    # Old way of doing things
                     filter_clauses = self._create_filter_clause_json_deprecated(
                         filter)
                     filter_by.extend(filter_clauses)
 
             _type = self.EmbeddingStore
+
+            if negative_embeddings:
+                for neg_embedding in negative_embeddings:
+                    # Adjust threshold as needed
+                    filter_by.append(
+                        self.distance_strategy(neg_embedding) > 0.7)
 
             results: List[Any] = (
                 session.query(
@@ -947,6 +959,7 @@ class PGVector(VectorStore):
         embedding: List[float],
         k: int = 4,
         filter: Optional[dict] = None,
+        negative_embeddings: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[Document]:
         """Return docs most similar to embedding vector.
@@ -960,7 +973,7 @@ class PGVector(VectorStore):
             List of Documents most similar to the query vector.
         """
         docs_and_scores = self.similarity_search_with_score_by_vector(
-            embedding=embedding, k=k, filter=filter
+            embedding=embedding, k=k, filter=filter, negative_embeddings=negative_embeddings
         )
         return _results_to_docs(docs_and_scores)
 
@@ -1173,6 +1186,7 @@ class PGVector(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         filter: Optional[Dict[str, str]] = None,
+        negative_embeddings: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[Tuple[Document, float]]:
         """Return docs selected using the maximal marginal relevance with score
@@ -1197,7 +1211,7 @@ class PGVector(VectorStore):
                 relevance to the query and score for each.
         """
         results = self.__query_collection(
-            embedding=embedding, k=fetch_k, filter=filter)
+            embedding=embedding, k=fetch_k, filter=filter, negative_embeddings=negative_embeddings)
 
         embedding_list = [
             result.EmbeddingStore.embedding for result in results]
